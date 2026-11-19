@@ -3,20 +3,25 @@
 import { useState } from "react";
 import {
   m2,
+  m2Abertura,
+  m2Neto,
   money,
   num,
   subtotalMaterial,
+  totalAberturas,
   totalM2,
   totalMateriales,
 } from "@/lib/calc";
 import type {
+  AberturaInput,
   MaterialInput,
   PresupuestoData,
   SuperficieInput,
 } from "@/lib/types";
 
 const nuevaSuperficie = (): SuperficieInput => ({ descripcion: "", ancho: 0, alto: 0 });
-const nuevoMaterial = (): MaterialInput => ({ descripcion: "", cantidad: 1, precioUnitario: 0 });
+const nuevaAbertura = (): AberturaInput => ({ descripcion: "", ancho: 0, alto: 0, cantidad: 1 });
+const nuevoMaterial =(): MaterialInput => ({ descripcion: "", cantidad: 1, precioUnitario: 0 });
 
 const inputCls =
   "w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20";
@@ -64,12 +69,16 @@ function Formulario({ onLimpiar }: { onLimpiar: () => void }) {
   const [notas, setNotas] = useState("");
   const [precioM2, setPrecioM2] = useState(0);
   const [superficies, setSuperficies] = useState<SuperficieInput[]>([nuevaSuperficie()]);
+  const [aberturas, setAberturas] = useState<AberturaInput[]>([]);
   const [materiales, setMateriales] = useState<MaterialInput[]>([nuevoMaterial()]);
   // Claves estables para las filas (evita que los inputs se mezclen al borrar)
   const [supKeys, setSupKeys] = useState(() => superficies.map(() => crypto.randomUUID()));
+  const [abKeys, setAbKeys] = useState<string[]>([]);
   const [matKeys, setMatKeys] = useState(() => materiales.map(() => crypto.randomUUID()));
 
-  const m2Total = totalM2(superficies);
+  const m2Bruto = totalM2(superficies);
+  const m2Aberturas = totalAberturas(aberturas);
+  const m2Total = m2Neto(superficies, aberturas);
   const manoObra = m2Total * precioM2;
   const matTotal = totalMateriales(materiales);
   const total = manoObra + matTotal;
@@ -80,11 +89,14 @@ function Formulario({ onLimpiar }: { onLimpiar: () => void }) {
     notas,
     precioM2,
     superficies,
+    aberturas,
     materiales,
   };
 
   const updateSup = (i: number, patch: Partial<SuperficieInput>) =>
     setSuperficies((prev) => prev.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const updateAb = (i: number, patch: Partial<AberturaInput>) =>
+    setAberturas((prev) => prev.map((a, j) => (j === i ? { ...a, ...patch } : a)));
   const updateMat = (i: number, patch: Partial<MaterialInput>) =>
     setMateriales((prev) => prev.map((m, j) => (j === i ? { ...m, ...patch } : m)));
 
@@ -168,10 +180,74 @@ function Formulario({ onLimpiar }: { onLimpiar: () => void }) {
           + Agregar superficie
         </button>
 
+        {/* Descuentos: puertas y ventanas */}
+        <div className="mt-6 border-t border-slate-200 pt-4">
+          <h3 className="mb-1 text-sm font-semibold text-slate-900">A descontar: puertas y ventanas</h3>
+          <p className="mb-3 text-xs text-slate-500">Estos m² se restan de la superficie total.</p>
+
+          {aberturas.length > 0 && (
+            <div className="hidden grid-cols-[1fr_6rem_6rem_5rem_7rem_2.5rem] gap-2 px-1 pb-1 text-xs font-medium uppercase tracking-wide text-slate-500 md:grid">
+              <span>Descripción</span>
+              <span className="text-right">Ancho (m)</span>
+              <span className="text-right">Alto (m)</span>
+              <span className="text-right">Cant.</span>
+              <span className="text-right">m²</span>
+              <span />
+            </div>
+          )}
+          <div className="space-y-3 md:space-y-2">
+            {aberturas.map((a, i) => (
+              <div
+                key={abKeys[i]}
+                className="grid grid-cols-3 gap-2 rounded-lg border border-slate-100 p-2 md:grid-cols-[1fr_6rem_6rem_5rem_7rem_2.5rem] md:border-0 md:p-0"
+              >
+                <input
+                  className={`${inputCls} col-span-3 md:col-span-1`}
+                  placeholder="Ej: Ventana cocina"
+                  value={a.descripcion}
+                  onChange={(e) => updateAb(i, { descripcion: e.target.value })}
+                />
+                <NumberInput aria-label="Ancho" value={a.ancho} onChange={(ancho) => updateAb(i, { ancho })} />
+                <NumberInput aria-label="Alto" value={a.alto} onChange={(alto) => updateAb(i, { alto })} />
+                <NumberInput aria-label="Cantidad" value={a.cantidad} onChange={(cantidad) => updateAb(i, { cantidad })} />
+                <div className="col-span-2 flex items-center justify-end rounded-md bg-red-50 px-3 py-2 text-sm font-medium tabular-nums text-red-700 md:col-span-1">
+                  −{num(m2Abertura(a))} m²
+                </div>
+                <button
+                  type="button"
+                  title="Quitar"
+                  onClick={() => {
+                    setAberturas((p) => p.filter((_, j) => j !== i));
+                    setAbKeys((p) => p.filter((_, j) => j !== i));
+                  }}
+                  className="rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAberturas((p) => [...p, nuevaAbertura()]);
+              setAbKeys((p) => [...p, crypto.randomUUID()]);
+            }}
+            className="mt-3 text-sm font-medium text-blue-700 hover:underline"
+          >
+            + Agregar puerta / ventana
+          </button>
+        </div>
+
         <div className="mt-5 flex flex-col gap-4 border-t border-slate-200 pt-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-sm text-slate-500">Total superficie</p>
             <p className="text-2xl font-bold tabular-nums text-slate-900">{num(m2Total)} m²</p>
+            {m2Aberturas > 0 && (
+              <p className="text-xs tabular-nums text-slate-500">
+                {num(m2Bruto)} m² − {num(m2Aberturas)} m² de aberturas
+              </p>
+            )}
           </div>
           <label className="block sm:w-48">
             <span className="mb-1 block text-sm font-medium text-slate-700">Precio por m²</span>

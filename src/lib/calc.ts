@@ -1,4 +1,4 @@
-import type { MaterialInput, SuperficieInput } from "./types";
+import type { AberturaInput, MaterialInput, SuperficieInput } from "./types";
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
@@ -7,6 +7,15 @@ export const m2 = (s: Pick<SuperficieInput, "ancho" | "alto">) =>
 
 export const totalM2 = (superficies: SuperficieInput[]) =>
   round2(superficies.reduce((acc, s) => acc + m2(s), 0));
+
+export const m2Abertura = (a: AberturaInput) => round2(m2(a) * (a.cantidad || 0));
+
+export const totalAberturas = (aberturas: AberturaInput[]) =>
+  round2(aberturas.reduce((acc, a) => acc + m2Abertura(a), 0));
+
+/** Superficie a cobrar: paredes menos puertas y ventanas (nunca negativa) */
+export const m2Neto = (superficies: SuperficieInput[], aberturas: AberturaInput[]) =>
+  Math.max(0, round2(totalM2(superficies) - totalAberturas(aberturas)));
 
 export const subtotalMaterial = (m: MaterialInput) =>
   round2((m.cantidad || 0) * (m.precioUnitario || 0));

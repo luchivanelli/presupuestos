@@ -2,9 +2,12 @@ import { jsPDF } from "jspdf";
 import autoTable, { type CellHookData } from "jspdf-autotable";
 import {
   m2,
+  m2Abertura,
+  m2Neto,
   money,
   num,
   subtotalMaterial,
+  totalAberturas,
   totalM2,
   totalMateriales,
 } from "./calc";
@@ -25,7 +28,10 @@ export function descargarPdf(p: PresupuestoData) {
   const margin = 15;
 
   const fecha = new Date().toLocaleDateString("es-AR");
-  const m2Total = totalM2(p.superficies);
+  const m2Bruto = totalM2(p.superficies);
+  const m2Aberturas = totalAberturas(p.aberturas);
+  const hayAberturas = m2Aberturas > 0;
+  const m2Total = m2Neto(p.superficies, p.aberturas);
   const manoObra = m2Total * p.precioM2;
   const materiales = totalMateriales(p.materiales);
 
@@ -58,7 +64,7 @@ export function descargarPdf(p: PresupuestoData) {
       num(s.alto),
       num(m2(s)),
     ]),
-    foot: [["Total superficie", "", "", `${num(m2Total)} m²`]],
+    foot: [[hayAberturas ? "Subtotal paredes" : "Total superficie", "", "", `${num(m2Bruto)} m²`]],
     headStyles: { fillColor: ACCENT },
     didParseCell: alignNumericCols,
     footStyles: { fillColor: [229, 231, 235], textColor: 20 },
@@ -68,6 +74,30 @@ export function descargarPdf(p: PresupuestoData) {
       3: { halign: "right" },
     },
   });
+
+  if (hayAberturas) {
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 4,
+      margin: { left: margin, right: margin },
+      head: [["A descontar (puertas y ventanas)", "Ancho (m)", "Alto (m)", "Cant.", "Superficie (m²)"]],
+      body: p.aberturas
+        .filter((a) => m2Abertura(a) > 0)
+        .map((a) => [a.descripcion, num(a.ancho), num(a.alto), num(a.cantidad), `-${num(m2Abertura(a))}`]),
+      foot: [
+        ["Total a descontar", "", "", "", `-${num(m2Aberturas)} m²`],
+        ["Total superficie", "", "", "", `${num(m2Total)} m²`],
+      ],
+      headStyles: { fillColor: [100, 116, 139] },
+      didParseCell: alignNumericCols,
+      footStyles: { fillColor: [229, 231, 235], textColor: 20 },
+      columnStyles: {
+        1: { halign: "right" },
+        2: { halign: "right" },
+        3: { halign: "right" },
+        4: { halign: "right" },
+      },
+    });
+  }
   y = doc.lastAutoTable.finalY + 6;
   doc.setFont("helvetica", "normal").setFontSize(11).setTextColor(20);
   doc.text(
