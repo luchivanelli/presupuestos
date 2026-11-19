@@ -5,13 +5,15 @@ const round2 = (n: number) => Math.round(n * 100) / 100;
 export const m2 = (s: Pick<SuperficieInput, "ancho" | "alto">) =>
   round2((s.ancho || 0) * (s.alto || 0));
 
-export const totalM2 = (superficies: SuperficieInput[]) =>
-  round2(superficies.reduce((acc, s) => acc + m2(s), 0));
+/** m² de una fila: ancho × alto × cantidad (paredes o aberturas) */
+export const m2Fila = (s: Pick<SuperficieInput, "ancho" | "alto" | "cantidad">) =>
+  round2(m2(s) * (s.cantidad || 0));
 
-export const m2Abertura = (a: AberturaInput) => round2(m2(a) * (a.cantidad || 0));
+export const totalM2 = (superficies: SuperficieInput[]) =>
+  round2(superficies.reduce((acc, s) => acc + m2Fila(s), 0));
 
 export const totalAberturas = (aberturas: AberturaInput[]) =>
-  round2(aberturas.reduce((acc, a) => acc + m2Abertura(a), 0));
+  round2(aberturas.reduce((acc, a) => acc + m2Fila(a), 0));
 
 /** Superficie a cobrar: paredes menos puertas y ventanas (nunca negativa) */
 export const m2Neto = (superficies: SuperficieInput[], aberturas: AberturaInput[]) =>

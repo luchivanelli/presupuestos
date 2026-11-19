@@ -2,6 +2,7 @@ export type SuperficieInput = {
   descripcion: string;
   ancho: number;
   alto: number;
+  cantidad: number;
 };
 
 /** Puerta o ventana cuya superficie se descuenta de las paredes */

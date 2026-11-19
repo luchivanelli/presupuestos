@@ -1,8 +1,7 @@
 import { jsPDF } from "jspdf";
 import autoTable, { type CellHookData } from "jspdf-autotable";
 import {
-  m2,
-  m2Abertura,
+  m2Fila,
   m2Neto,
   money,
   num,
@@ -57,14 +56,15 @@ export function descargarPdf(p: PresupuestoData) {
   autoTable(doc, {
     startY: y + 3,
     margin: { left: margin, right: margin },
-    head: [["Descripción", "Ancho (m)", "Alto (m)", "Superficie (m²)"]],
+    head: [["Descripción", "Ancho (m)", "Alto (m)", "Cant.", "Superficie (m²)"]],
     body: p.superficies.map((s) => [
       s.descripcion,
       num(s.ancho),
       num(s.alto),
-      num(m2(s)),
+      num(s.cantidad),
+      num(m2Fila(s)),
     ]),
-    foot: [[hayAberturas ? "Subtotal paredes" : "Total superficie", "", "", `${num(m2Bruto)} m²`]],
+    foot: [[hayAberturas ? "Subtotal paredes" : "Total superficie", "", "", "", `${num(m2Bruto)} m²`]],
     headStyles: { fillColor: ACCENT },
     didParseCell: alignNumericCols,
     footStyles: { fillColor: [229, 231, 235], textColor: 20 },
@@ -72,6 +72,7 @@ export function descargarPdf(p: PresupuestoData) {
       1: { halign: "right" },
       2: { halign: "right" },
       3: { halign: "right" },
+      4: { halign: "right" },
     },
   });
 
@@ -81,8 +82,8 @@ export function descargarPdf(p: PresupuestoData) {
       margin: { left: margin, right: margin },
       head: [["A descontar (puertas y ventanas)", "Ancho (m)", "Alto (m)", "Cant.", "Superficie (m²)"]],
       body: p.aberturas
-        .filter((a) => m2Abertura(a) > 0)
-        .map((a) => [a.descripcion, num(a.ancho), num(a.alto), num(a.cantidad), `-${num(m2Abertura(a))}`]),
+        .filter((a) => m2Fila(a) > 0)
+        .map((a) => [a.descripcion, num(a.ancho), num(a.alto), num(a.cantidad), `-${num(m2Fila(a))}`]),
       foot: [
         ["Total a descontar", "", "", "", `-${num(m2Aberturas)} m²`],
         ["Total superficie", "", "", "", `${num(m2Total)} m²`],
